@@ -10,15 +10,18 @@ impl<T> Consumer<T> {
         Self { channel }
     }
 
-    pub fn consume<F>(&self, mut process: F)
+    pub fn consume<F, G>(&self, mut process: F, done: G)
     where
         F: FnMut(T) + Send + 'static,
+        G: FnOnce() + Send + 'static,
         T: Send + 'static,
     {
-        let channel = Arc::clone(&self.channel); // Kanalın kopyasını oluştur
-        thread::spawn(move || loop {
-            let message = channel.recv();
-            process(message);
+        let channel = Arc::clone(&self.channel);
+        thread::spawn(move || {
+            while let Some(message) = channel.recv() {
+                process(message);
+            }
+            done();
         });
     }
 }
